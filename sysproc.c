@@ -99,5 +99,10 @@ sys_clone(void)
 int
 sys_join(void)
 {
-  // TODO: implement sys_join
+  int stack;
+  // obtain the arguments for join
+  if(argint(0, &stack)>=0)
+    return join((void **)stack);
+  else
+    return -1;
 }
