@@ -89,3 +89,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_clone(void)
+{
+  // TODO : implement sys_clone
+}
+
+int
+sys_join(void)
+{
+  // TODO: implement sys_join
+}
