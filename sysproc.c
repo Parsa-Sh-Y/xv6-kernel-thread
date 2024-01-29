@@ -93,7 +93,12 @@ sys_uptime(void)
 int
 sys_clone(void)
 {
-  // TODO : implement sys_clone
+  int stack, worker, arg1, arg2;
+  // obtain the arguments for clone
+  if(argint(0, &stack)>=0 && argint(1, &worker)>=0 && argint(2, &arg1)>=0 && argint(3, &arg2)>=0)
+    return clone((void *)stack, (void *)worker, (void *)arg1, (void *)arg2);
+  else
+    return -1;
 }
 
 int

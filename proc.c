@@ -221,6 +221,70 @@ fork(void)
   return pid;
 }
 
+int 
+clone(void* stack, void(*worker)(void*,void*), void *arg1, void *arg2)
+{
+  int i, pid;
+  struct proc *np;
+  struct proc *curproc = myproc();
+
+  // Allocate process.
+  if((np = allocproc()) == 0)
+    return -1;
+
+  // Copy process data to the new thread
+  np->pgdir = curproc->pgdir;
+  np->sz = curproc->sz;
+  np->parent = curproc;
+  *np->tf = *curproc->tf;
+  
+  void *addr_arg1; // here arg1 should be placed
+  void *addr_arg2; // where arg2 should be placed
+  void *addr_ret;  // where return address should be placed
+
+  // Push arguments to the stack
+  // Push fake return address to the stack
+  addr_arg2 = stack + PGSIZE - 1 * sizeof(void *);
+  *(uint*)addr_arg2 = (uint)arg2;  
+
+  addr_arg1 = stack + PGSIZE - 2 * sizeof(void *);
+  *(uint*)addr_arg1 = (uint)arg1;
+
+  addr_ret = stack + PGSIZE - 3 * sizeof(void *);
+  *(uint*)addr_ret = 0xFFFFFFFF; 
+
+  // Save a pointer to the thread stack
+  np->tstack = stack;
+
+  // Initialize stack pointer
+  np->tf->esp = (uint)stack + PGSIZE - 3 * sizeof(void*);
+
+  // Set instruction pointer to the worker function
+  np->tf->eip = (uint) worker;
+
+  // Clear %eax so that fork returns 0 in the child. This register doesn't matter
+  np->tf->eax = 0; 
+
+  for(i = 0; i < NOFILE; i++)
+    if(curproc->ofile[i])
+      np->ofile[i] = filedup(curproc->ofile[i]);
+  np->cwd = idup(curproc->cwd);
+
+  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+
+  pid = np->pid;
+
+  acquire(&ptable.lock);
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  return pid;
+
+}
+
+
 int
 join(void **stack)
 {
