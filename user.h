@@ -1,6 +1,10 @@
 struct stat;
 struct rtcdate;
 
+typedef struct lock{
+  uint stat;
+}lock;
+
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
@@ -41,3 +45,6 @@ void free(void*);
 int atoi(const char*);
 int thread_create(void (*start_routine)(void *,void*), void * arg1, void * arg2);
 int thread_join(); 
+int lock_init(lock *lk);
+void lock_acquire(lock *lk);
+void lock_release(lock *lk);

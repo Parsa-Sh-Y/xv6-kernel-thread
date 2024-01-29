@@ -120,3 +120,17 @@ int thread_join()
   free(stack);
   return pid;
 }
+
+int lock_init(lock *lck)
+{
+  lck->stat = 0;
+  return 0;
+}
+
+void lock_acquire(lock *lck){
+  while(xchg(&lck->stat, 1) != 0);
+}
+
+void lock_release(lock *lck){
+	xchg(&lck->stat, 0);
+}
