@@ -88,6 +88,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->isthread = 0;
+  p->numthread = 0;
+  p->t = ptable.proc;
 
   release(&ptable.lock);
 
@@ -237,7 +240,9 @@ clone(void* stack, void(*worker)(void*,void*), void *arg1, void *arg2)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-  
+  np->isthread = 1;
+  curproc->numthread += 1;
+
   void *addr_arg1; // here arg1 should be placed
   void *addr_arg2; // where arg2 should be placed
   void *addr_ret;  // where return address should be placed
@@ -291,7 +296,6 @@ join(void **stack)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -312,6 +316,7 @@ join(void **stack)
         p->state = UNUSED;
         *stack = p->tstack;
         p->tstack = 0;
+        curproc->numthread -= 1;
         release(&ptable.lock);
         return pid;
       }
@@ -432,27 +437,69 @@ void
 scheduler(void)
 {
   struct proc *p;
+  struct proc *psched;
+  struct proc *t;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+  int flag = 0;
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
-
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->isthread || (p->state != RUNNABLE && p->state != SLEEPING)) 
         continue;
 
+      // if the process is sleeping but has threads, proceed to schedule one of its threads if possible
+      if (p->state == SLEEPING && p->numthread == 0)
+        continue;
+
+      if (p->numthread > 0) {
+        t = p->t + 1;
+        for(;;) {
+          if (t == p->t) {
+            if ((t == p && p->state == RUNNABLE) || (t->parent == p && t->isthread && t->state == RUNNABLE)) {
+              flag = 1;
+              psched = t;
+            }
+            break;
+          }
+          if (t < &ptable.proc[NPROC]) {
+            if ((t == p && p->state == RUNNABLE) || (t->parent == p && t->isthread && t->state == RUNNABLE)) {
+              psched = t;
+              flag = 1;
+              p->t = t;
+              break;
+            }
+            t++;
+          }
+          else{
+            t = ptable.proc;
+          }
+        }
+      }
+      else{
+        psched = p;
+        p->t = p;
+      }
+
+      if (p->numthread > 0 && !flag) // if none of the process threads or itself could be scheduled continue
+        continue;
+      else if (p->numthread > 0 && flag)
+        flag = 0;
+
+      // for(t = ptable.proc; t < &ptable.proc[NPROC]; t++)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
+      c->proc = psched;
+      switchuvm(psched);
+      psched->state = RUNNING;
+
+      swtch(&(c->scheduler), psched->context);
       switchkvm();
 
       // Process is done running for now.

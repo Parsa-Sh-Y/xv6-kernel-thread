@@ -41,6 +41,9 @@ struct proc {
   char *kstack;                // Bottom of kernel stack for this process
   void *tstack;                // Pointer to thread stack
   enum procstate state;        // Process state
+  int isthread;                // Indicates whether the process is a thread or not
+  int numthread;               // Indicates the number of threads the process has
+  struct proc *t;              // Indicates where to start the search for the next thread to be scheduled
   int pid;                     // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
