@@ -8,16 +8,17 @@ lock l2;
 lock l3;
 
 void func1(void* arg1, void* arg2) {
-  // int num1 = *(int*)arg1;
-  // int num2 = *(int*)arg2;
-  // printf(1, "hello from func1, arg1: %d, arg2: %d\n", num1, num2);
-  // sleep(100);
-  // exit();
+  
+  sleep(30);
+  int num1 = *(int*)arg1;
+  int num2 = *(int*)arg2;
+  printf(1, "func1, arg1: %d, arg2: %d\n", num1, num2);
 
   sleep(100);
   printf(1, "A\n");
   lock_release(&l1);
   lock_acquire(&l2);
+  sleep(50);
   printf(1, "C\n");
   lock_release(&l3);
   exit();
@@ -26,16 +27,19 @@ void func1(void* arg1, void* arg2) {
 }
 
 void func2(void* arg1, void* arg2) {
-  // int num1 = *(int*)arg1;
-  // int num2 = *(int*)arg2;
-  // printf(1, "hello from func2, arg1: %d, arg2: %d\n", num1, num2);
-  // sleep(100);
-  // exit();
-
+  
+  sleep(60);
+  int num1 = *(int*)arg1;
+  int num2 = *(int*)arg2;
+  printf(1, "func2, arg1: %d, arg2: %d\n", num1, num2);
+  
+  sleep(100);
   lock_acquire(&l1);
   printf(1, "B\n");
+  sleep(50);
   lock_release(&l2);
   lock_acquire(&l3);
+  sleep(50);
   printf(1, "D\n");
   exit();
 }
@@ -59,5 +63,8 @@ main(int argc, char *argv[])
   thread_create(&func2, (void *)&arg21, (void *)&arg22);
   thread_join();
   thread_join();
+
+  printf(1, "END\n");
+
   exit();  
 }
